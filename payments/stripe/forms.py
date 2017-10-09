@@ -30,11 +30,16 @@ class StripeFormMixin(object):
             if not self.payment.transaction_id:
                 stripe.api_key = self.provider.secret_key
                 try:
+                    # create Stripe customer
+                    self.customer = stripe.Customer.create(
+                        email=self.payment.get_customer_email(),
+                        source=data['stripeToken']
+                    )
                     self.charge = stripe.Charge.create(
                         capture=False,
                         amount=int(self.payment.total * 100),
                         currency=self.payment.currency,
-                        card=data['stripeToken'],
+                        customer=self.customer.id,
                         description='%s %s' % (
                             self.payment.billing_last_name,
                             self.payment.billing_first_name))
@@ -56,6 +61,8 @@ class StripeFormMixin(object):
 
     def save(self):
         self.payment.transaction_id = self.charge.id
+        # save customer data
+        self.payment.attrs.customer = stripe.util.json.dumps(self.customer)
         self.payment.attrs.charge = stripe.util.json.dumps(self.charge)
         self.payment.change_status(PaymentStatus.PREAUTH)
         if self.provider._capture:

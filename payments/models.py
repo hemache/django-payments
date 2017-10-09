@@ -133,6 +133,9 @@ class BasePayment(models.Model):
     def get_process_url(self):
         return reverse('process_payment', kwargs={'token': self.token})
 
+    def get_customer_email(self):
+        return self.billing_email
+
     def capture(self, amount=None):
         if self.status != PaymentStatus.PREAUTH:
             raise ValueError(
